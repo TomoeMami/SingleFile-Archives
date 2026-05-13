@@ -1,0 +1,82 @@
+name: Generate index.html
+
+on:
+  push:
+    paths:
+      - '**.html'
+      - '!index.html'          # 避免自己触发自己
+
+permissions:
+  contents: write              # 允许提交
+
+jobs:
+  generate-index:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build index.html
+        shell: bash
+        run: |
+          python3 << 'EOF'
+          import os, re
+          from glob import glob
+          from urllib.parse import quote
+          from datetime import datetime, timezone
+
+          html_files = []
+          for f in glob('**/*.html', recursive=True):
+              if f == 'index.html':
+                  continue
+              # 尝试提取 <title>
+              title = None
+              try:
+                  with open(f, 'r', encoding='utf-8', errors='ignore') as fh:
+                      content = fh.read()
+                      m = re.search(r'<title>(.*?)</title>', content, re.IGNORECASE | re.DOTALL)
+                      if m:
+                          title = m.group(1).strip()
+              except Exception:
+                  pass
+              if not title:
+                  title = os.path.splitext(os.path.basename(f))[0]
+              html_files.append((f, title))
+
+          # 按文件路径排序，也可按时间排，这里简单按路径
+          html_files.sort(key=lambda x: x[0])
+
+          now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+          links = '\n'.join(
+              f'<li><a href="{quote(f, safe="/")}">{title}</a></li>'
+              for f, title in html_files
+          )
+
+          html = f"""<!DOCTYPE html>
+          <html lang="zh">
+          <head><meta charset="utf-8"><title>已保存的页面</title></head>
+          <body>
+          <h1>已保存的页面</h1>
+          <p>生成时间：{now}</p>
+          <ul>
+          {links}
+          </ul>
+          </body>
+          </html>"""
+
+          with open('index.html', 'w', encoding='utf-8') as out:
+              out.write(html)
+          print('index.html 生成完毕')
+          EOF
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "没有变化，跳过提交"
+          else
+            git commit -m "自动更新 index.html [skip ci]"
+            git push
+          fi
