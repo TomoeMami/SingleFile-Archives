@@ -20,30 +20,21 @@ jobs:
         shell: bash
         run: |
           python3 << 'EOF'
-          import os, re
+          import os
           from glob import glob
           from urllib.parse import quote
           from datetime import datetime, timezone
 
           html_files = []
+
           for f in glob('**/*.html', recursive=True):
               if f == 'index.html':
                   continue
-              # 尝试提取 <title>
-              title = None
-              try:
-                  with open(f, 'r', encoding='utf-8', errors='ignore') as fh:
-                      content = fh.read()
-                      m = re.search(r'<title>(.*?)</title>', content, re.IGNORECASE | re.DOTALL)
-                      if m:
-                          title = m.group(1).strip()
-              except Exception:
-                  pass
-              if not title:
-                  title = os.path.splitext(os.path.basename(f))[0]
+              # 直接使用文件名（不含 .html）作为链接文字
+              title = os.path.splitext(os.path.basename(f))[0]
               html_files.append((f, title))
 
-          # 按文件路径排序，也可按时间排，这里简单按路径
+          # 按文件路径排序，方便浏览
           html_files.sort(key=lambda x: x[0])
 
           now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
