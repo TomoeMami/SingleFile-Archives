@@ -23,7 +23,7 @@ jobs:
           import os
           from glob import glob
           from urllib.parse import quote
-          from datetime import datetime, timezone
+          from datetime import datetime, timezone, timedelta
 
           html_files = []
 
@@ -37,7 +37,10 @@ jobs:
           # 按文件路径排序，方便浏览
           html_files.sort(key=lambda x: x[0])
 
-          now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+          # 使用上海时区（UTC+8）
+          shanghai_tz = timezone(timedelta(hours=8))
+          now = datetime.now(shanghai_tz).strftime('%Y-%m-%d %H:%M:%S 北京时间')
+
           links = '\n'.join(
               f'<li><a href="{quote(f, safe="/")}">{title}</a></li>'
               for f, title in html_files
